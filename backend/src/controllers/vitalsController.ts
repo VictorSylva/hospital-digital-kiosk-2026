@@ -139,8 +139,19 @@ export const getVitalsHistory = async (req: any, res: Response): Promise<void> =
   try {
     const { patientId } = req.params;
 
+    // Resolve Patient ID (UUID vs Kiosk ID)
+    let targetPatientId = patientId;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(patientId);
+
+    if (!isUuid) {
+      const patient = await Patient.findOne({ where: { national_id: patientId } });
+      if (patient) {
+        targetPatientId = patient.id;
+      }
+    }
+
     const vitals: any[] = await VitalSign.findAll({
-      where: { patient_id: patientId },
+      where: { patient_id: targetPatientId },
       include: [{ model: User, as: 'recorder' }],
       order: [['captured_at', 'DESC']],
       limit: 50
