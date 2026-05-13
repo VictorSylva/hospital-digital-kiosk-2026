@@ -31,11 +31,11 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
     if (isUuid) {
       patient = await Patient.findByPk(patient_id);
     } else {
-      // Try to find by custom ID or just use the first available patient for demo
-      patient = await Patient.findOne({ where: { national_id: patient_id } });
-      if (!patient) {
-        patient = await Patient.findOne();
-      }
+      // Search by national_id (Kiosk ID)
+      patient = await Patient.findOne({ 
+        where: { national_id: patient_id },
+        include: [{ model: User }] 
+      });
     }
 
     if (!patient) {
