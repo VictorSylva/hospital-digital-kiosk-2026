@@ -4,11 +4,17 @@
     {
       "source": "/api/v1/:path*",
       "destination": "/backend/src/server.ts"
+    },
+    {
+      "source": "/((?!api/v1/).*)",
+      "destination": "/frontend/dist/$1"
     }
   ],
   "functions": {
     "backend/src/server.ts": {
-      "runtime": "vercel-node@latest"
+      "runtime": "vercel-node@latest",
+      "memory": 1024,
+      "maxDuration": 10
     }
   }
 }
