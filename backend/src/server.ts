@@ -128,7 +128,8 @@ const startServer = async (): Promise<void> => {
         );
       }
     } else {
-      await sequelize.sync({ alter: syncAlterEnabled });
+      // Force sync in production if tables are missing
+      await sequelize.sync({ alter: true });
     }
 
     console.log("Database synchronized");
