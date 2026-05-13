@@ -109,33 +109,31 @@ const ensureHardcodedAdmin = async (): Promise<void> => {
   );
 };
 
+// Global state for serverless cold starts
+let isInitialized = false;
+
 const startServer = async (): Promise<void> => {
+  if (isInitialized) return;
+
   try {
     await sequelize.authenticate();
     console.log("Database connection successful");
 
-    const syncAlterEnabled = process.env.DB_SYNC_ALTER !== "false";
-
-    if (sequelize.getDialect() === "sqlite") {
-      await cleanupSqliteBackupTables();
-
-      // SQLite + Sequelize alter can fail due to stale *_backup tables;
-      // use safe sync by default in local/dev.
-      await sequelize.sync();
-      if (syncAlterEnabled) {
-        console.warn(
-          "DB_SYNC_ALTER is ignored for sqlite to prevent startup failures.",
-        );
-      }
+    // Only sync once per lambda lifecycle to save time
+    if (process.env.NODE_ENV === "production") {
+      // In production, we assume tables are mostly ready, 
+      // but we do a quick check/sync once.
+      await sequelize.sync({ alter: process.env.DB_SYNC_ALTER === "true" });
     } else {
-      // Force sync in production if tables are missing
-      await sequelize.sync({ alter: true });
+      await sequelize.sync();
     }
 
     console.log("Database synchronized");
 
     await ensureHardcodedAdmin();
     await ensurePatientProfiles();
+    
+    isInitialized = true;
 
     if (!process.env.VERCEL) {
       app.listen(PORT, () => {
@@ -144,9 +142,20 @@ const startServer = async (): Promise<void> => {
     }
   } catch (error) {
     console.error("Failed to start server:", error);
-    process.exit(1);
+    // Don't exit(1) on Vercel as it kills the instance unnecessarily
+    if (!process.env.VERCEL) process.exit(1);
   }
 };
+
+// Middleware to ensure DB is ready before any request
+app.use(async (req, res, next) => {
+  try {
+    await startServer();
+    next();
+  } catch (error) {
+    res.status(500).json({ error: "Internal Server Error: Database initialization failed" });
+  }
+});
 
 // Global error handler
 app.use((err: any, req: Request, res: Response, next: any) => {
