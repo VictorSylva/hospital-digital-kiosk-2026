@@ -8,9 +8,11 @@ interface AuthenticatedRequest extends Request {
 export const authenticate = (req: any, res: Response, next: NextFunction): void => {
   // Check for ESP32 Secret Header first
   const esp32Secret = req.headers['x-esp32-secret'];
-  if (esp32Secret && esp32Secret === process.env.ESP32_SECRET) {
-    // Populate a mock "System Admin" user for the device
-    req.user = { id: '00000000-0000-0000-0000-000000000000', role: 'admin', name: 'ESP32 Kiosk' };
+  const EXPECTED_SECRET = process.env.ESP32_SECRET || 'hospital_kiosk_secret_2026';
+  
+  if (esp32Secret && esp32Secret === EXPECTED_SECRET) {
+    // Populate a kiosk marker without a fake ID so the controller can find a real user
+    req.user = { role: 'admin', isKiosk: true };
     return next();
   }
 
