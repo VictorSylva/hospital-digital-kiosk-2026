@@ -34,14 +34,25 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
       // Try to find by custom ID or just use the first available patient for demo
       patient = await Patient.findOne({ where: { national_id: patient_id } });
       if (!patient) {
-        // Fallback: If no patient exists, use a dummy or the first patient in DB
         patient = await Patient.findOne();
       }
     }
 
     if (!patient) {
-      res.status(404).json({ error: 'Patient not found and no fallback available' });
-      return;
+      // Create a dummy patient for the Kiosk if DB is totally empty
+      // First we need a user for the patient
+      const dummyUser = await User.create({
+        name: 'Kiosk Patient',
+        email: `kiosk_${Date.now()}@telemed.com`,
+        password_hash: 'no_password_needed',
+        role: 'patient'
+      });
+      patient = await Patient.create({
+        user_id: dummyUser.id,
+        national_id: patient_id,
+        date_of_birth: new Date('1990-01-01')
+      });
+      console.log(`Created auto-patient for kiosk: ${patient_id}`);
     }
 
     // Check for abnormal readings
