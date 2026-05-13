@@ -1,0 +1,52 @@
+{
+  "name": "hdms-backend",
+  "version": "1.0.0",
+  "description": "Hospital Digital Health Management System - Backend",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "dev": "tsx watch src/server.ts",
+    "test": "jest",
+    "seed": "tsx src/seeders/seed.ts",
+    "generate:encryption-key": "node -e \"const c=require('node:crypto');let k='';while(k.length<32){k+=c.randomBytes(32).toString('base64').replace(/[^a-zA-Z0-9]/g,'')}console.log(k.slice(0,32))\"",
+    "validate:encryption-key": "node -e \"require('dotenv').config();const key=(process.env.ENCRYPTION_KEY||'').trim();if(Buffer.byteLength(key,'utf8')!==32){console.error('Invalid ENCRYPTION_KEY: must be exactly 32 UTF-8 bytes/chars.');process.exit(1)}console.log('ENCRYPTION_KEY is valid (32 chars).')\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "email-validator": "^2.0.4",
+    "express": "^5.2.1",
+    "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.20.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.5.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.1",
+    "ts-jest": "^29.4.6",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt",
+      "sqlite3"
+    ]
+  }
+}
