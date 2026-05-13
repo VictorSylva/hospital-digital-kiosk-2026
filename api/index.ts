@@ -1,16 +1,16 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import sequelize from "./config/database.js";
-import { User, Patient } from "./models/index.js";
-import { hashPassword } from "./utils/authUtils.js";
-import { auditLogMiddleware } from "./middleware/auditLog.js";
-import authRoutes from "./routes/authRoutes.js";
-import departmentRoutes from "./routes/departmentRoutes.js";
-import queueRoutes from "./routes/queueRoutes.js";
-import ehrRoutes from "./routes/ehrRoutes.js";
-import pharmacyRoutes from "./routes/pharmacyRoutes.js";
-import vitalsRoutes from "./routes/vitalsRoutes.js";
+import sequelize from "./_src/config/database.js";
+import { User, Patient } from "./_src/models/index.js";
+import { hashPassword } from "./_src/utils/authUtils.js";
+import { auditLogMiddleware } from "./_src/middleware/auditLog.js";
+import authRoutes from "./_src/routes/authRoutes.js";
+import departmentRoutes from "./_src/routes/departmentRoutes.js";
+import queueRoutes from "./_src/routes/queueRoutes.js";
+import ehrRoutes from "./_src/routes/ehrRoutes.js";
+import pharmacyRoutes from "./_src/routes/pharmacyRoutes.js";
+import vitalsRoutes from "./_src/routes/vitalsRoutes.js";
 
 dotenv.config();
 
