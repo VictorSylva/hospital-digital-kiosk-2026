@@ -82,6 +82,15 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
       abnormalFlags.push('high_diastolic');
     }
 
+    // Resolve Recorder (User who is submitting the data)
+    let recorderId = req.user?.id || req.user?.userId;
+    
+    if (!recorderId) {
+      // If submitted by ESP32 (no user login), link it to the System Admin
+      const admin = await User.findOne({ where: { email: 'admin@telemed.com' } });
+      recorderId = admin ? admin.id : '00000000-0000-0000-0000-000000000000';
+    }
+
     const vitals: any = await VitalSign.create({
       patient_id: patient.id, // Use the real UUID
       temperature,
@@ -91,7 +100,7 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
       spo2,
       heart_rate,
       respiratory_rate,
-      recorded_by: req.user?.id || '00000000-0000-0000-0000-000000000000',
+      recorded_by: recorderId,
       is_abnormal: abnormalFlags.length > 0,
       abnormal_flags: abnormalFlags.length > 0 ? abnormalFlags : null,
       captured_at: new Date()
