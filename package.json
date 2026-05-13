@@ -21,7 +21,15 @@
     "pg": "^8.20.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.2.0",
+    "axios": "^1.8.1",
+    "lucide-react": "^0.477.0",
+    "recharts": "^2.15.1",
+    "framer-motion": "^12.38.0",
+    "react-hot-toast": "^2.6.0"
   },
   "devDependencies": {
     "typescript": "^6.0.2",
