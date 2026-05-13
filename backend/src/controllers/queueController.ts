@@ -42,7 +42,7 @@ export const getLiveQueue = async (
       order: [
         [
           sequelize.literal(
-            'CASE WHEN priority = "emergency" THEN 0 WHEN priority = "elderly_disabled" THEN 1 ELSE 2 END',
+            "CASE WHEN priority = 'emergency' THEN 0 WHEN priority = 'elderly_disabled' THEN 1 ELSE 2 END",
           ),
           "ASC",
         ],

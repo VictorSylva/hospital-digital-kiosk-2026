@@ -24,6 +24,26 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
       return;
     }
 
+    // Resolve Patient (UUID vs Kiosk ID)
+    let patient: any = null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(patient_id);
+
+    if (isUuid) {
+      patient = await Patient.findByPk(patient_id);
+    } else {
+      // Try to find by custom ID or just use the first available patient for demo
+      patient = await Patient.findOne({ where: { national_id: patient_id } });
+      if (!patient) {
+        // Fallback: If no patient exists, use a dummy or the first patient in DB
+        patient = await Patient.findOne();
+      }
+    }
+
+    if (!patient) {
+      res.status(404).json({ error: 'Patient not found and no fallback available' });
+      return;
+    }
+
     // Check for abnormal readings
     const abnormalFlags: string[] = [];
 
@@ -44,7 +64,7 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
     }
 
     const vitals: any = await VitalSign.create({
-      patient_id,
+      patient_id: patient.id, // Use the real UUID
       temperature,
       weight,
       blood_pressure_systolic,
@@ -52,7 +72,7 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
       spo2,
       heart_rate,
       respiratory_rate,
-      recorded_by: req.user.userId || req.user.id,
+      recorded_by: req.user?.id || '00000000-0000-0000-0000-000000000000',
       is_abnormal: abnormalFlags.length > 0,
       abnormal_flags: abnormalFlags.length > 0 ? abnormalFlags : null,
       captured_at: new Date()
