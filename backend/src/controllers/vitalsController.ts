@@ -86,13 +86,26 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
     let recorderId = req.user?.id || req.user?.userId;
     
     if (!recorderId) {
-      // If submitted by ESP32 (no user login), link it to the System Admin
-      const admin = await User.findOne({ where: { email: 'admin@telemed.com' } });
-      recorderId = admin ? admin.id : '00000000-0000-0000-0000-000000000000';
+      // If submitted by ESP32 (no user login), find the Admin or create a Kiosk Bot
+      let recorder = await User.findOne({ where: { email: 'admin@telemed.com' } });
+      
+      if (!recorder) {
+        // Create a permanent Bot user if even the Admin is missing
+        recorder = await User.findOne({ where: { role: 'admin' } });
+        if (!recorder) {
+          recorder = await User.create({
+            name: 'Kiosk Hardware',
+            email: 'kiosk_hardware@telemed.com',
+            password_hash: 'no_password',
+            role: 'admin'
+          });
+        }
+      }
+      recorderId = recorder.id;
     }
 
     const vitals: any = await VitalSign.create({
-      patient_id: patient.id, // Use the real UUID
+      patient_id: patient.id,
       temperature,
       weight,
       blood_pressure_systolic,
