@@ -8,7 +8,7 @@ interface AuthenticatedRequest extends Request {
 }
 
 // Issue prescription
-export const issuePrescription = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const issuePrescription = async (req: any, res: Response): Promise<void> => {
   try {
     const { patient_id, drug_name, dosage, frequency, duration, route } = req.body;
 
@@ -41,7 +41,7 @@ export const issuePrescription = async (req: AuthenticatedRequest, res: Response
 };
 
 // Get pending prescriptions (pharmacist worklist)
-export const getPendingPrescriptions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const getPendingPrescriptions = async (req: any, res: Response): Promise<void> => {
   try {
     const prescriptions: any[] = await Prescription.findAll({
       where: { status: ['issued', 'pending_review', 'flagged'] },
@@ -60,7 +60,7 @@ export const getPendingPrescriptions = async (req: AuthenticatedRequest, res: Re
 };
 
 // Approve prescription
-export const approvePrescription = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const approvePrescription = async (req: any, res: Response): Promise<void> => {
   try {
     const { prescription_id } = req.body;
 
@@ -86,7 +86,7 @@ export const approvePrescription = async (req: AuthenticatedRequest, res: Respon
 };
 
 // Reject prescription
-export const rejectPrescription = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const rejectPrescription = async (req: any, res: Response): Promise<void> => {
   try {
     const { prescription_id, reason } = req.body;
 
@@ -118,7 +118,7 @@ export const rejectPrescription = async (req: AuthenticatedRequest, res: Respons
 };
 
 // Dispense prescription
-export const dispensePrescription = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const dispensePrescription = async (req: any, res: Response): Promise<void> => {
   try {
     const { prescription_id } = req.body;
 
@@ -161,7 +161,7 @@ export const dispensePrescription = async (req: AuthenticatedRequest, res: Respo
 };
 
 // Manage inventory
-export const getInventory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const getInventory = async (req: any, res: Response): Promise<void> => {
   try {
     const inventory: any[] = await Inventory.findAll({
       order: [['drug_name', 'ASC']]
@@ -181,7 +181,7 @@ export const getInventory = async (req: AuthenticatedRequest, res: Response): Pr
 };
 
 // Update inventory
-export const updateInventory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const updateInventory = async (req: any, res: Response): Promise<void> => {
   try {
     const { inventory_id, quantity } = req.body;
 

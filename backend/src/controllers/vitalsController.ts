@@ -15,7 +15,7 @@ const ABNORMAL_THRESHOLDS = {
 };
 
 // Submit vital signs
-export const submitVitals = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const submitVitals = async (req: any, res: Response): Promise<void> => {
   try {
     const { patient_id, temperature, weight, blood_pressure_systolic, blood_pressure_diastolic, spo2, heart_rate, respiratory_rate } = req.body;
 
@@ -74,7 +74,7 @@ export const submitVitals = async (req: AuthenticatedRequest, res: Response): Pr
 };
 
 // Get vitals history
-export const getVitalsHistory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const getVitalsHistory = async (req: any, res: Response): Promise<void> => {
   try {
     const { patientId } = req.params;
 
@@ -93,7 +93,7 @@ export const getVitalsHistory = async (req: AuthenticatedRequest, res: Response)
 };
 
 // Get patients with abnormal readings
-export const getAbnormalReadings = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const getAbnormalReadings = async (req: any, res: Response): Promise<void> => {
   try {
     const abnormalVitals: any[] = await VitalSign.findAll({
       where: { is_abnormal: true },

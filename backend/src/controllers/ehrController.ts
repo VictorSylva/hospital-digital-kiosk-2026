@@ -9,7 +9,7 @@ interface AuthenticatedRequest extends Request {
 }
 
 // Get decrypted EHR
-export const getEHR = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const getEHR = async (req: any, res: Response): Promise<void> => {
   try {
     const patientId = req.params.patientId as string;
 
@@ -53,7 +53,7 @@ export const getEHR = async (req: AuthenticatedRequest, res: Response): Promise<
 };
 
 // Create EHR entry
-export const createEHR = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const createEHR = async (req: any, res: Response): Promise<void> => {
   try {
     const patientId = req.params.patientId as string;
     const { record_type, content } = req.body;
@@ -86,7 +86,7 @@ export const createEHR = async (req: AuthenticatedRequest, res: Response): Promi
 };
 
 // Update EHR entry
-export const updateEHR = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const updateEHR = async (req: any, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string;
     const { content } = req.body;
@@ -122,7 +122,7 @@ export const updateEHR = async (req: AuthenticatedRequest, res: Response): Promi
 };
 
 // Export audit logs
-export const exportAuditLogs = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const exportAuditLogs = async (req: any, res: Response): Promise<void> => {
   try {
     const logs: any[] = await AuditLog.findAll({
       include: [{ model: User }],

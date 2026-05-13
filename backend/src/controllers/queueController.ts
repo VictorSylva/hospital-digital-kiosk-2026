@@ -29,7 +29,7 @@ const isUuid = (value: string): boolean => UUID_REGEX.test(value);
 
 // Get live queue
 export const getLiveQueue = async (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
 ): Promise<void> => {
   try {
@@ -72,7 +72,7 @@ export const getLiveQueue = async (
 
 // Book appointment
 export const bookAppointment = async (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
 ): Promise<void> => {
   try {
@@ -193,7 +193,7 @@ export const bookAppointment = async (
 
 // Check in patient
 export const checkInPatient = async (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
 ): Promise<void> => {
   try {
@@ -279,7 +279,7 @@ export const checkInPatient = async (
 
 // Update queue status
 export const updateQueueStatus = async (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
 ): Promise<void> => {
   try {
@@ -323,7 +323,7 @@ export const updateQueueStatus = async (
 
 // Reschedule appointment
 export const rescheduleAppointment = async (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
 ): Promise<void> => {
   try {
@@ -362,7 +362,7 @@ export const rescheduleAppointment = async (
 
 // Cancel appointment
 export const cancelAppointment = async (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
 ): Promise<void> => {
   try {
