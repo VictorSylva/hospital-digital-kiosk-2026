@@ -211,7 +211,8 @@ export const register = async (
         await Patient.create(
           {
             user_id: createdUser.id,
-            date_of_birth: new Date("1970-01-01"),
+            national_id: req.body.national_id || null,
+            date_of_birth: req.body.date_of_birth || new Date("1970-01-01"),
           },
           { transaction },
         );

@@ -4,13 +4,14 @@ import { Shield, UserPlus, Users, Loader2, Building2, Plus } from 'lucide-react'
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 
-const STAFF_ROLES = ['doctor', 'nurse', 'pharmacist', 'admin'];
+const STAFF_ROLES = ['doctor', 'nurse', 'pharmacist', 'admin', 'patient'];
 
 const initialFormData = {
   name: '',
   email: '',
   password: '',
-  role: 'doctor'
+  role: 'doctor',
+  national_id: ''
 };
 
 const initialDepartmentForm = {
@@ -194,6 +195,23 @@ const Admin = () => {
                 ))}
               </select>
             </div>
+
+            {formData.role === 'patient' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+              >
+                <label className="label-text text-primary font-semibold">National ID / Kiosk ID</label>
+                <input
+                  type="text"
+                  className="input-field border-primary/30 focus:border-primary"
+                  value={formData.national_id}
+                  onChange={(e) => handleChange('national_id', e.target.value)}
+                  placeholder="e.g. P001, P002"
+                  required
+                />
+              </motion.div>
+            )}
 
             <button
               type="submit"
