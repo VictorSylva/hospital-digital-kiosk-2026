@@ -32,7 +32,10 @@ const Login = () => {
       }
     } catch (err) {
       console.error('Auth error:', err);
-      const errorMessage = err.response?.data?.error || err.message || 'Authentication failed';
+      let errorMessage = err.response?.data?.error || err.message || 'Authentication failed';
+      if (typeof errorMessage === 'object') {
+        errorMessage = errorMessage.message || JSON.stringify(errorMessage);
+      }
       toast.error(errorMessage);
     } finally {
       setLoading(false);

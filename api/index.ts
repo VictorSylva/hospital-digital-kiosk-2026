@@ -148,6 +148,14 @@ const startServer = async (): Promise<void> => {
   }
 };
 
+// Global error handler
+app.use((err: any, req: Request, res: Response, next: any) => {
+  console.error('Unhandled error:', err);
+  res.status(err.status || 500).json({ 
+    error: err.message || 'An unexpected error occurred' 
+  });
+});
+
 startServer();
 
 export default app;
