@@ -5,7 +5,7 @@ interface AuthenticatedRequest extends Request {
   user?: any;
 }
 
-export const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+export const authenticate = (req: any, res: Response, next: NextFunction): void => {
   // Check for ESP32 Secret Header first
   const esp32Secret = req.headers['x-esp32-secret'];
   if (esp32Secret && esp32Secret === process.env.ESP32_SECRET) {
@@ -31,7 +31,7 @@ export const authenticate = (req: AuthenticatedRequest, res: Response, next: Nex
 };
 
 export const authorize = (...roles: string[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+  return (req: any, res: Response, next: NextFunction): void => {
     if (!req.user || !roles.includes(req.user.role)) {
       res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
       return;

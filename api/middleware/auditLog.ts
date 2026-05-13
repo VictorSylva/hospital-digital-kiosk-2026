@@ -30,9 +30,9 @@ export const auditLog = async (
   }
 };
 
-export const auditLogMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+export const auditLogMiddleware = (req: any, res: Response, next: NextFunction): void => {
   req.auditLog = auditLog;
-  req.clientIp = req.ip || (req.socket ? req.socket.remoteAddress : undefined);
+  req.clientIp = req.ip || (req.socket ? req.socket.remoteAddress : '');
   next();
 };
 
