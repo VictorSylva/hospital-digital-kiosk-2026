@@ -39,20 +39,28 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
     }
 
     if (!patient) {
-      // Create a dummy patient for the Kiosk if DB is totally empty
-      // First we need a user for the patient
-      const dummyUser = await User.create({
-        name: 'Kiosk Patient',
-        email: `kiosk_${Date.now()}@telemed.com`,
-        password_hash: 'no_password_needed',
-        role: 'patient'
-      });
-      patient = await Patient.create({
-        user_id: dummyUser.id,
-        national_id: patient_id,
-        date_of_birth: new Date('1990-01-01')
-      });
-      console.log(`Created auto-patient for kiosk: ${patient_id}`);
+      try {
+        // Create a unique email based on the patient_id to prevent collisions
+        const safeEmail = `kiosk_${patient_id.toLowerCase()}_${Math.floor(Math.random() * 10000)}@telemed.com`;
+        
+        const dummyUser = await User.create({
+          name: `Patient ${patient_id}`,
+          email: safeEmail,
+          password_hash: 'no_password_needed',
+          role: 'patient'
+        });
+
+        patient = await Patient.create({
+          user_id: dummyUser.id,
+          national_id: patient_id,
+          date_of_birth: new Date('1990-01-01')
+        });
+        console.log(`Successfully auto-created patient: ${patient_id}`);
+      } catch (createErr) {
+        // If creation fails (e.g. someone else created it at the same microsecond), try one last find
+        patient = await Patient.findOne({ where: { national_id: patient_id } });
+        if (!patient) throw createErr;
+      }
     }
 
     // Check for abnormal readings
