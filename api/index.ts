@@ -115,6 +115,13 @@ let isInitialized = false;
 const startServer = async (): Promise<void> => {
   if (isInitialized) return;
 
+  // Diagnostic: Check for DB URL
+  const dbUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  if (!dbUrl && process.env.NODE_ENV === "production") {
+    console.error("CRITICAL: POSTGRES_URL is missing in environment variables!");
+    throw new Error("Backend Error: POSTGRES_URL environment variable is missing. Please check Vercel Settings.");
+  }
+
   try {
     await sequelize.authenticate();
     console.log("Database connection successful");
@@ -151,8 +158,11 @@ app.use(async (req, res, next) => {
   try {
     await startServer();
     next();
-  } catch (error) {
-    res.status(500).json({ error: "Internal Server Error: Database initialization failed" });
+  } catch (error: any) {
+    console.error('Initialization failed:', error);
+    res.status(500).json({ 
+      error: error.message || "Internal Server Error: Database initialization failed" 
+    });
   }
 });
 
