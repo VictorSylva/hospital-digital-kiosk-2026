@@ -140,14 +140,22 @@ export const getVitalsHistory = async (req: any, res: Response): Promise<void> =
     const { patientId } = req.params;
 
     // Resolve Patient ID (UUID vs Kiosk ID)
-    let targetPatientId = patientId;
+    let targetPatientId: string | null = null;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(patientId);
 
-    if (!isUuid) {
+    if (isUuid) {
+      targetPatientId = patientId;
+    } else {
       const patient = await Patient.findOne({ where: { national_id: patientId } });
       if (patient) {
         targetPatientId = patient.id;
       }
+    }
+
+    // If no patient found, return empty array safely
+    if (!targetPatientId) {
+      res.json({ vitals: [] });
+      return;
     }
 
     const vitals: any[] = await VitalSign.findAll({
