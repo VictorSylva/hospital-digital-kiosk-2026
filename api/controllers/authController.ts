@@ -163,7 +163,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
 
 // Register (Admin only)
 export const register = async (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
 ): Promise<void> => {
   try {
@@ -246,7 +246,7 @@ export const register = async (
 
 // List users (Admin only)
 export const listUsers = async (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
 ): Promise<void> => {
   try {

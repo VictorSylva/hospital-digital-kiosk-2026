@@ -23,7 +23,7 @@ export const listDepartments = async (
 };
 
 export const createDepartment = async (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
 ): Promise<void> => {
   try {
