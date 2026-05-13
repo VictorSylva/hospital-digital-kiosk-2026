@@ -119,8 +119,8 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
       captured_at: new Date()
     });
 
-    if (req.user && req.auditLog) {
-      await req.auditLog(req.user.id || req.user.userId, 'vitals_recorded', 'vital_signs', vitals.id, req.clientIp || '');
+    if (req.auditLog) {
+      await req.auditLog(recorderId, 'vitals_recorded', 'vital_signs', vitals.id, req.clientIp || '');
     }
 
     res.status(201).json({
