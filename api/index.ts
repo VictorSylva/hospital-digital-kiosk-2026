@@ -119,18 +119,17 @@ const startServer = async (): Promise<void> => {
     await sequelize.authenticate();
     console.log("Database connection successful");
 
-    // Only sync once per lambda lifecycle to save time
-    if (process.env.NODE_ENV === "production") {
-      // In production, we assume tables are mostly ready, 
-      // but we do a quick check/sync once.
-      await sequelize.sync({ alter: process.env.DB_SYNC_ALTER === "true" });
-    } else {
-      await sequelize.sync();
-    }
+    // Ultra-lightweight sync: only create if missing
+    await sequelize.sync();
 
     console.log("Database synchronized");
 
-    await ensureHardcodedAdmin();
+    // Fast Admin Check
+    const adminExists = await User.count({ where: { email: HARDCODED_ADMIN.email } });
+    if (adminExists === 0) {
+      await ensureHardcodedAdmin();
+    }
+    
     await ensurePatientProfiles();
     
     isInitialized = true;
