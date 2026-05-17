@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Thermometer, Weight, Heart, TrendingUp, Search, Plus, AlertTriangle, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../utils/AuthContext';
 import api from '../utils/api';
+import { useSocket } from '../utils/useSocket';
 
 const Vitals = () => {
   const { user } = useAuth();
@@ -18,6 +19,13 @@ const Vitals = () => {
     weight: '',
     blood_pressure: '',
     spo2: ''
+  });
+
+  // Real-time synchronization
+  useSocket(() => {
+    if (searched && patientId.trim()) {
+      handleSearch();
+    }
   });
 
   const handleSearch = async (e) => {

@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { Prescription, Inventory, Patient, User } from '../models/index.js';
+import { PharmacyService } from '../utils/PharmacyService.js';
+import sequelize from '../config/database.js';
 
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -17,17 +19,50 @@ export const issuePrescription = async (req: any, res: Response): Promise<void> 
       return;
     }
 
-    const prescription: any = await Prescription.create({
-      patient_id,
-      doctor_id: req.user.userId || req.user.id,
+    // Resolve Patient ID (UUID vs Kiosk ID / Email)
+    let targetPatientId: string | null = null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(patient_id);
+
+    if (isUuid) {
+      let patient = await Patient.findByPk(patient_id);
+      if (patient) {
+        targetPatientId = patient.id;
+      } else {
+        patient = await Patient.findOne({ where: { user_id: patient_id } });
+        if (patient) {
+          targetPatientId = patient.id;
+        }
+      }
+    } else {
+      let patient = await Patient.findOne({ where: { national_id: patient_id } });
+      if (patient) {
+        targetPatientId = patient.id;
+      } else {
+        const user = await User.findOne({ where: { email: patient_id } });
+        if (user) {
+          patient = await Patient.findOne({ where: { user_id: user.id } });
+          if (patient) {
+            targetPatientId = patient.id;
+          }
+        }
+      }
+    }
+
+    if (!targetPatientId) {
+      res.status(404).json({ error: 'Patient not found' });
+      return;
+    }
+
+    const doctorId = req.user.userId || req.user.id;
+    const prescription = await PharmacyService.issuePrescription(
+      targetPatientId,
+      doctorId,
       drug_name,
       dosage,
       frequency,
       duration,
-      route,
-      status: 'issued',
-      issued_at: new Date()
-    });
+      route
+    );
 
     if (req.user && req.auditLog) {
       await req.auditLog(req.user.id || req.user.userId, 'prescription_issued', 'prescriptions', prescription.id, req.clientIp || '');
@@ -36,7 +71,7 @@ export const issuePrescription = async (req: any, res: Response): Promise<void> 
     res.status(201).json({ prescription });
   } catch (error) {
     console.error('Issue prescription error:', error);
-    res.status(500).json({ error: 'Failed to issue prescription' });
+    res.status(500).json({ error: error.message || 'Failed to issue prescription' });
   }
 };
 
@@ -52,7 +87,10 @@ export const getPendingPrescriptions = async (req: any, res: Response): Promise<
       order: [['issued_at', 'ASC']]
     });
 
-    res.json({ prescriptions });
+    res.json({ 
+      prescriptions,
+      pending: prescriptions
+    });
   } catch (error) {
     console.error('Get prescriptions error:', error);
     res.status(500).json({ error: 'Failed to retrieve prescriptions' });
@@ -120,43 +158,24 @@ export const rejectPrescription = async (req: any, res: Response): Promise<void>
 // Dispense prescription
 export const dispensePrescription = async (req: any, res: Response): Promise<void> => {
   try {
-    const { prescription_id } = req.body;
+    const prescriptionId = req.params.id || req.body.prescription_id || req.body.prescriptionId;
 
-    const prescription: any = await Prescription.findByPk(prescription_id);
-    if (!prescription) {
-      res.status(404).json({ error: 'Prescription not found' });
+    if (!prescriptionId) {
+      res.status(400).json({ error: 'Prescription ID required' });
       return;
     }
 
-    if (prescription.status === 'dispensed') {
-      res.status(400).json({ error: 'Prescription already dispensed' });
-      return;
-    }
-
-    // Update inventory
-    const inventory: any = await Inventory.findOne({ where: { drug_name: prescription.drug_name } });
-    if (!inventory || inventory.quantity <= 0) {
-      res.status(400).json({ error: 'Drug not in stock' });
-      return;
-    }
-
-    // Robust Pharmacy Logic: Decrement inventory and save atomically
-    inventory.quantity -= 1;
-    await inventory.save();
-
-    prescription.status = 'dispensed';
-    prescription.dispensed_at = new Date();
-    prescription.pharmacist_id = req.user.userId || req.user.id;
-    await prescription.save();
+    const pharmacistId = req.user?.userId || req.user?.id;
+    const prescription = await PharmacyService.dispensePrescription(prescriptionId, pharmacistId);
 
     if (req.user && req.auditLog) {
-      await req.auditLog(req.user.id || req.user.userId, 'prescription_dispensed', 'prescriptions', prescription_id, req.clientIp || '');
+      await req.auditLog(req.user.id || req.user.userId, 'prescription_dispensed', 'prescriptions', prescriptionId, req.clientIp || '');
     }
 
     res.json({ prescription });
   } catch (error) {
     console.error('Dispense prescription error:', error);
-    res.status(500).json({ error: 'Failed to dispense prescription' });
+    res.status(400).json({ error: error.message || 'Failed to dispense prescription' });
   }
 };
 
@@ -184,13 +203,14 @@ export const getInventory = async (req: any, res: Response): Promise<void> => {
 export const updateInventory = async (req: any, res: Response): Promise<void> => {
   try {
     const { inventory_id, quantity } = req.body;
+    const resolvedInventoryId = req.params.id || inventory_id;
 
-    if (!inventory_id || quantity === undefined) {
+    if (!resolvedInventoryId || quantity === undefined) {
       res.status(400).json({ error: 'Inventory ID and quantity required' });
       return;
     }
 
-    const item: any = await Inventory.findByPk(inventory_id);
+    const item: any = await Inventory.findByPk(resolvedInventoryId);
     if (!item) {
       res.status(404).json({ error: 'Inventory item not found' });
       return;
@@ -200,13 +220,51 @@ export const updateInventory = async (req: any, res: Response): Promise<void> =>
     await item.save();
 
     if (req.user && req.auditLog) {
-      await req.auditLog(req.user.id || req.user.userId, 'inventory_updated', 'inventory', inventory_id, req.clientIp || '');
+      await req.auditLog(req.user.id || req.user.userId, 'inventory_updated', 'inventory', resolvedInventoryId, req.clientIp || '');
     }
 
     res.json({ item });
   } catch (error) {
     console.error('Update inventory error:', error);
     res.status(500).json({ error: 'Failed to update inventory' });
+  }
+};
+
+// Add inventory item
+export const addInventoryItem = async (req: any, res: Response): Promise<void> => {
+  try {
+    const { drug_name, quantity, unit, expiry_date, reorder_threshold, batch_number, supplier } = req.body;
+
+    if (!drug_name || !unit || !expiry_date) {
+      res.status(400).json({ error: 'Drug name, unit, and expiry date are required' });
+      return;
+    }
+
+    // Check if drug already exists (case insensitive match)
+    const existing = await Inventory.findOne({ where: sequelize.where(sequelize.fn('lower', sequelize.col('drug_name')), drug_name.toLowerCase()) });
+    if (existing) {
+      res.status(400).json({ error: 'Drug already exists in inventory. Restock it instead.' });
+      return;
+    }
+
+    const item = await Inventory.create({
+      drug_name,
+      quantity: quantity || 0,
+      unit,
+      expiry_date: new Date(expiry_date),
+      reorder_threshold: reorder_threshold || 10,
+      batch_number: batch_number || null,
+      supplier: supplier || null
+    });
+
+    if (req.user && req.auditLog) {
+      await req.auditLog(req.user.id || req.user.userId, 'inventory_created', 'inventory', item.id, req.clientIp || '');
+    }
+
+    res.status(201).json({ item });
+  } catch (error) {
+    console.error('Add inventory item error:', error);
+    res.status(500).json({ error: 'Failed to create inventory item' });
   }
 };
 
@@ -217,5 +275,6 @@ export default {
   rejectPrescription,
   dispensePrescription,
   getInventory,
-  updateInventory
+  updateInventory,
+  addInventoryItem
 };

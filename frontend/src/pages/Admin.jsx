@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, UserPlus, Users, Loader2, Building2, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
@@ -30,6 +30,15 @@ const Admin = () => {
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    national_id: '',
+    is_active: true
+  });
 
   const staffUsers = useMemo(
     () => users.filter((user) => STAFF_ROLES.includes(user.role)),
@@ -85,6 +94,35 @@ const Admin = () => {
       toast.error(message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/auth/users/${selectedUser.id}`, {
+        name: editFormData.name,
+        email: editFormData.email,
+        national_id: editFormData.national_id || null,
+        is_active: editFormData.is_active
+      });
+      toast.success('Account updated successfully!');
+      setShowEditModal(false);
+      setSelectedUser(null);
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update account');
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this account? This will permanently delete their patient profiles and records.')) return;
+    try {
+      await api.delete(`/auth/users/${id}`);
+      toast.success('Account deleted successfully!');
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete account');
     }
   };
 
@@ -243,33 +281,41 @@ const Admin = () => {
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-100">
-            <table className="w-full text-left border-collapse">
+             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="px-4 py-3 text-xs uppercase tracking-wider text-slate-500">Name</th>
                   <th className="px-4 py-3 text-xs uppercase tracking-wider text-slate-500">Email</th>
+                  <th className="px-4 py-3 text-xs uppercase tracking-wider text-slate-500">Kiosk ID</th>
                   <th className="px-4 py-3 text-xs uppercase tracking-wider text-slate-500">Role</th>
                   <th className="px-4 py-3 text-xs uppercase tracking-wider text-slate-500">Status</th>
+                  <th className="px-4 py-3 text-xs uppercase tracking-wider text-slate-500 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loadingUsers ? (
                   <tr>
-                    <td colSpan="4" className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan="6" className="px-4 py-10 text-center text-slate-500">
                       Loading users...
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan="6" className="px-4 py-10 text-center text-slate-500">
                       No users found.
                     </td>
                   </tr>
                 ) : (
                   users.map((user) => (
                     <tr key={user.id}>
-                      <td className="px-4 py-3 font-medium text-slate-700">{user.name}</td>
+                      <td className="px-4 py-3 font-medium text-slate-700">
+                        <div>{user.name}</div>
+                        <div className="text-[10px] text-slate-400 font-mono select-all">UUID: {user.id}</div>
+                      </td>
                       <td className="px-4 py-3 text-slate-600">{user.email}</td>
+                      <td className="px-4 py-3 text-slate-700 font-semibold font-mono">
+                        {user.Patient?.national_id || <span className="text-slate-300">-</span>}
+                      </td>
                       <td className="px-4 py-3">
                         <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 capitalize border border-blue-100">
                           {user.role}
@@ -279,6 +325,20 @@ const Admin = () => {
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${user.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
                           {user.is_active ? 'Active' : 'Disabled'}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-3">
+                        <button 
+                          onClick={() => { setSelectedUser(user); setEditFormData({ name: user.name, email: user.email, national_id: user.Patient?.national_id || '', is_active: user.is_active }); setShowEditModal(true); }}
+                          className="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded font-semibold transition"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded font-semibold transition"
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -419,6 +479,73 @@ const Admin = () => {
           </div>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {showEditModal && selectedUser && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-left"
+            >
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">Edit User Profile</h2>
+                <button onClick={() => { setShowEditModal(false); setSelectedUser(null); }} className="text-slate-400 hover:text-slate-600 font-bold text-xl">×</button>
+              </div>
+              
+              <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Full Name</label>
+                  <input 
+                    type="text"
+                    className="input-field w-full px-4 py-2 border border-slate-200 rounded-xl"
+                    required
+                    value={editFormData.name}
+                    onChange={e => setEditFormData({...editFormData, name: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Email Address</label>
+                  <input 
+                    type="email"
+                    className="input-field w-full px-4 py-2 border border-slate-200 rounded-xl"
+                    required
+                    value={editFormData.email}
+                    onChange={e => setEditFormData({...editFormData, email: e.target.value})}
+                  />
+                </div>
+                {selectedUser.role === 'patient' && (
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">National ID / Kiosk ID</label>
+                    <input 
+                      type="text"
+                      className="input-field w-full px-4 py-2 border border-slate-200 rounded-xl"
+                      value={editFormData.national_id}
+                      onChange={e => setEditFormData({...editFormData, national_id: e.target.value})}
+                      placeholder="e.g. P001, P002"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Account Status</label>
+                  <select 
+                    className="input-field w-full px-4 py-2 border border-slate-200 rounded-xl"
+                    value={editFormData.is_active ? 'active' : 'inactive'}
+                    onChange={e => setEditFormData({...editFormData, is_active: e.target.value === 'active'})}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Disabled</option>
+                  </select>
+                </div>
+                
+                <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
+                  <button type="button" onClick={() => { setShowEditModal(false); setSelectedUser(null); }} className="px-5 py-2 font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
+                  <button type="submit" className="btn-primary flex items-center gap-2">Save Changes</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

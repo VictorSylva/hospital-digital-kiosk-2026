@@ -8,6 +8,7 @@ import AuditLog from './AuditLog.js';
 import Prescription from './Prescription.js';
 import Inventory from './Inventory.js';
 import VitalSign from './VitalSign.js';
+import PatientFlow from './PatientFlow.js';
 
 // Define associations
 Patient.belongsTo(User, { foreignKey: 'user_id' });
@@ -36,6 +37,9 @@ VitalSign.belongsTo(Patient, { foreignKey: 'patient_id' });
 VitalSign.belongsTo(User, { as: 'recorder', foreignKey: 'recorded_by' });
 Patient.hasMany(VitalSign, { foreignKey: 'patient_id' });
 
+PatientFlow.belongsTo(Patient, { foreignKey: 'patient_id' });
+Patient.hasOne(PatientFlow, { foreignKey: 'patient_id' });
+
 export {
   User,
   Patient,
@@ -46,5 +50,6 @@ export {
   AuditLog,
   Prescription,
   Inventory,
-  VitalSign
+  VitalSign,
+  PatientFlow
 };

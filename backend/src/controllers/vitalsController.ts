@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { VitalSign, Patient, User } from '../models/index.js';
+import { QueueService } from '../utils/QueueService.js';
+import { emitQueueUpdate } from '../utils/socket.js';
 
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -24,18 +26,28 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
       return;
     }
 
-    // Resolve Patient (UUID vs Kiosk ID)
+    // Resolve Patient (UUID vs Kiosk ID vs Email)
     let patient: any = null;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(patient_id);
 
     if (isUuid) {
       patient = await Patient.findByPk(patient_id);
+      if (!patient) {
+        patient = await Patient.findOne({ where: { user_id: patient_id } });
+      }
     } else {
       // Search by national_id (Kiosk ID)
       patient = await Patient.findOne({ 
         where: { national_id: patient_id },
         include: [{ model: User }] 
       });
+      if (!patient) {
+        // Fallback: Search by email
+        const user = await User.findOne({ where: { email: patient_id } });
+        if (user) {
+          patient = await Patient.findOne({ where: { user_id: user.id } });
+        }
+      }
     }
 
     if (!patient) {
@@ -123,6 +135,14 @@ export const submitVitals = async (req: any, res: Response): Promise<void> => {
       await req.auditLog(recorderId, 'vitals_recorded', 'vital_signs', vitals.id, req.clientIp || '');
     }
 
+    // After capturing vitals, if the patient is in AWAITING_TRIAGE, move to AWAITING_DOCTOR
+    try {
+      await QueueService.advanceState(patient.id, 'AWAITING_DOCTOR');
+    } catch (e) {
+      // If the transition is invalid (e.g., they are already with the doctor), we just emit a queue update
+      emitQueueUpdate();
+    }
+
     res.status(201).json({
       vitals,
       is_abnormal: abnormalFlags.length > 0,
@@ -144,11 +164,27 @@ export const getVitalsHistory = async (req: any, res: Response): Promise<void> =
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(patientId);
 
     if (isUuid) {
-      targetPatientId = patientId;
-    } else {
-      const patient = await Patient.findOne({ where: { national_id: patientId } });
+      let patient = await Patient.findByPk(patientId);
       if (patient) {
         targetPatientId = patient.id;
+      } else {
+        patient = await Patient.findOne({ where: { user_id: patientId } });
+        if (patient) {
+          targetPatientId = patient.id;
+        }
+      }
+    } else {
+      let patient = await Patient.findOne({ where: { national_id: patientId } });
+      if (patient) {
+        targetPatientId = patient.id;
+      } else {
+        const user = await User.findOne({ where: { email: patientId } });
+        if (user) {
+          patient = await Patient.findOne({ where: { user_id: user.id } });
+          if (patient) {
+            targetPatientId = patient.id;
+          }
+        }
       }
     }
 

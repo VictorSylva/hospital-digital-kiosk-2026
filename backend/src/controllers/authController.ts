@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { User, Patient } from "../models/index.js";
+import { User, Patient, Appointment, QueueEntry, EHRRecord, Prescription, VitalSign, PatientFlow, AuditLog } from "../models/index.js";
 import sequelize from "../config/database.js";
 import {
   hashPassword,
@@ -253,6 +253,7 @@ export const listUsers = async (
   try {
     const users: any[] = await User.findAll({
       attributes: ["id", "name", "email", "role", "is_active", "createdAt"],
+      include: [{ model: Patient, attributes: ["id", "national_id", "phone", "address"] }],
       order: [["createdAt", "DESC"]],
     });
 
@@ -260,6 +261,115 @@ export const listUsers = async (
   } catch (error) {
     console.error("List users error:", error);
     res.status(500).json({ error: "Failed to fetch users" });
+  }
+};
+
+// Update user (Admin only)
+export const updateUser = async (req: any, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, email, is_active, role, national_id, phone, address } = req.body;
+
+    const user: any = await User.findByPk(id);
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    await sequelize.transaction(async (transaction) => {
+      if (name) user.name = name;
+      if (email) user.email = email.toLowerCase();
+      if (is_active !== undefined) user.is_active = is_active;
+      if (role) user.role = role;
+      await user.save({ transaction });
+
+      if (user.role === "patient" || role === "patient") {
+        let patient = await Patient.findOne({ where: { user_id: user.id }, transaction });
+        if (!patient) {
+          await Patient.create({
+            user_id: user.id,
+            date_of_birth: new Date("1970-01-01"),
+            national_id: national_id || null,
+            phone: phone || null,
+            address: address || null
+          }, { transaction });
+        } else {
+          if (national_id !== undefined) patient.national_id = national_id || null;
+          if (phone !== undefined) patient.phone = phone || null;
+          if (address !== undefined) patient.address = address || null;
+          await patient.save({ transaction });
+        }
+      }
+    });
+
+    if (req.user && req.auditLog) {
+      await req.auditLog(
+        req.user.id || req.user.userId,
+        "user_updated",
+        "users",
+        user.id,
+        req.clientIp || "",
+      );
+    }
+
+    const updatedUser = await User.findByPk(user.id, {
+      attributes: ["id", "name", "email", "role", "is_active", "createdAt"],
+      include: [{ model: Patient, attributes: ["id", "national_id", "phone", "address"] }]
+    });
+
+    res.json({ user: updatedUser });
+  } catch (error) {
+    console.error("Update user error:", error);
+    res.status(500).json({ error: "Failed to update user profile" });
+  }
+};
+
+// Delete user (Admin only)
+export const deleteUser = async (req: any, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const user: any = await User.findByPk(id);
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const currentUserId = req.user.id || req.user.userId;
+    if (user.id === currentUserId) {
+      res.status(400).json({ error: "Cannot delete your own account" });
+      return;
+    }
+
+    await sequelize.transaction(async (transaction) => {
+      const patient = await Patient.findOne({ where: { user_id: user.id }, transaction });
+      if (patient) {
+        await PatientFlow.destroy({ where: { patient_id: patient.id }, transaction });
+        await QueueEntry.destroy({ where: { patient_id: patient.id }, transaction });
+        await Appointment.destroy({ where: { patient_id: patient.id }, transaction });
+        await VitalSign.destroy({ where: { patient_id: patient.id }, transaction });
+        await EHRRecord.destroy({ where: { patient_id: patient.id }, transaction });
+        await Prescription.destroy({ where: { patient_id: patient.id }, transaction });
+        await patient.destroy({ transaction });
+      }
+      await AuditLog.destroy({ where: { user_id: user.id }, transaction });
+      await user.destroy({ transaction });
+    });
+
+    if (req.user && req.auditLog) {
+      await req.auditLog(
+        req.user.id || req.user.userId,
+        "user_deleted",
+        "users",
+        id,
+        req.clientIp || "",
+      );
+    }
+
+    res.json({ message: "User deleted successfully" });
+  } catch (error) {
+    console.error("Delete user error:", error);
+    res.status(500).json({ error: "Failed to delete user" });
   }
 };
 
@@ -288,4 +398,4 @@ export const logout = (req: Request, res: Response): void => {
   res.json({ message: "Logged out successfully" });
 };
 
-export default { login, signup, register, listUsers, refreshToken, logout };
+export default { login, signup, register, listUsers, updateUser, deleteUser, refreshToken, logout };

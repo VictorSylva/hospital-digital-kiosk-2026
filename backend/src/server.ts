@@ -11,10 +11,14 @@ import queueRoutes from "./routes/queueRoutes.js";
 import ehrRoutes from "./routes/ehrRoutes.js";
 import pharmacyRoutes from "./routes/pharmacyRoutes.js";
 import vitalsRoutes from "./routes/vitalsRoutes.js";
+import { createServer } from "http";
+import { initSocket } from "./utils/socket.js";
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
+initSocket(httpServer);
 
 // Middleware
 app.use(cors({ origin: "*" })); // Allow all for Render-to-Vercel communication
@@ -97,7 +101,7 @@ const startServer = async (): Promise<void> => {
     await ensureHardcodedAdmin();
     await ensurePatientProfiles();
 
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {

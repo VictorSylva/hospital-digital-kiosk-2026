@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, UserPlus, Clock, Play, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import { useSocket } from '../utils/useSocket';
 
 const Queue = () => {
   const [queue, setQueue] = useState([]);
@@ -22,10 +23,13 @@ const Queue = () => {
     }
   };
 
+  // Real-time synchronization
+  useSocket(() => {
+    fetchQueue();
+  });
+
   useEffect(() => {
     fetchQueue();
-    const interval = setInterval(fetchQueue, 10000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleBook = async (e) => {
@@ -36,7 +40,10 @@ const Queue = () => {
 
       if (appointmentId) {
         try {
-          const checkInRes = await api.post('/queue/checkin', { appointment_id: appointmentId });
+          const checkInRes = await api.post('/queue/checkin', { 
+            appointment_id: appointmentId,
+            priority: formData.priority || 'standard'
+          });
           const token = checkInRes.data?.queue_entry?.token_number || checkInRes.data?.entry?.token_number;
           toast.success(`Appointment booked and queued! Token: ${token || 'Generated'}`);
         } catch (checkInError) {
@@ -57,7 +64,10 @@ const Queue = () => {
   const handleCheckIn = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post('/queue/checkin', { appointment_id: formData.appointment_id });
+      const res = await api.post('/queue/checkin', { 
+        appointment_id: formData.appointment_id,
+        priority: formData.priority || 'standard'
+      });
       const token = res.data?.queue_entry?.token_number || res.data?.entry?.token_number;
       toast.success(`Checked in! Token: ${token || 'Generated'}`);
       setShowCheckInModal(false);
@@ -239,6 +249,14 @@ const Queue = () => {
                 <div>
                   <label className="label-text">Date & Time</label>
                   <input type="datetime-local" className="input-field" required value={formData.scheduled_at} onChange={e => setFormData({...formData, scheduled_at: e.target.value})} />
+                </div>
+                <div>
+                  <label className="label-text">Priority</label>
+                  <select className="input-field" value={formData.priority || 'standard'} onChange={e => setFormData({...formData, priority: e.target.value})}>
+                    <option value="standard">Standard</option>
+                    <option value="elderly_disabled">Elderly / Disabled</option>
+                    <option value="emergency">Emergency</option>
+                  </select>
                 </div>
                 <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
                   <button type="button" onClick={() => setShowBookModal(false)} className="px-4 py-2 font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>

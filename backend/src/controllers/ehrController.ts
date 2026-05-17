@@ -13,14 +13,48 @@ export const getEHR = async (req: any, res: Response): Promise<void> => {
   try {
     const patientId = req.params.patientId as string;
 
+    // Resolve Patient ID (UUID vs Kiosk ID / Email)
+    let targetPatientId: string | null = null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(patientId);
+
+    if (isUuid) {
+      let patient = await Patient.findByPk(patientId);
+      if (patient) {
+        targetPatientId = patient.id;
+      } else {
+        patient = await Patient.findOne({ where: { user_id: patientId } });
+        if (patient) {
+          targetPatientId = patient.id;
+        }
+      }
+    } else {
+      let patient = await Patient.findOne({ where: { national_id: patientId } });
+      if (patient) {
+        targetPatientId = patient.id;
+      } else {
+        const user = await User.findOne({ where: { email: patientId } });
+        if (user) {
+          patient = await Patient.findOne({ where: { user_id: user.id } });
+          if (patient) {
+            targetPatientId = patient.id;
+          }
+        }
+      }
+    }
+
+    if (!targetPatientId) {
+      res.status(404).json({ error: 'Patient not found' });
+      return;
+    }
+
     // Check permissions
-    if (req.user.role === 'patient' && (req.user.userId !== patientId && req.user.id !== patientId)) {
+    if (req.user.role === 'patient' && (req.user.userId !== targetPatientId && req.user.id !== targetPatientId)) {
       res.status(403).json({ error: 'Access denied' });
       return;
     }
 
     const records: any[] = await EHRRecord.findAll({
-      where: { patient_id: patientId },
+      where: { patient_id: targetPatientId },
       include: [{ model: User, as: 'creator' }],
       order: [['createdAt', 'DESC']]
     });
@@ -42,7 +76,7 @@ export const getEHR = async (req: any, res: Response): Promise<void> => {
     }).filter(r => r !== null);
 
     if (req.user && req.auditLog) {
-      await req.auditLog(req.user.id || req.user.userId, 'ehr_accessed', 'ehr_records', patientId, (req.clientIp as string) || '');
+      await req.auditLog(req.user.id || req.user.userId, 'ehr_accessed', 'ehr_records', targetPatientId, (req.clientIp as string) || '');
     }
 
     res.json({ records: decryptedRecords });
@@ -63,10 +97,44 @@ export const createEHR = async (req: any, res: Response): Promise<void> => {
       return;
     }
 
+    // Resolve Patient ID (UUID vs Kiosk ID / Email)
+    let targetPatientId: string | null = null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(patientId);
+
+    if (isUuid) {
+      let patient = await Patient.findByPk(patientId);
+      if (patient) {
+        targetPatientId = patient.id;
+      } else {
+        patient = await Patient.findOne({ where: { user_id: patientId } });
+        if (patient) {
+          targetPatientId = patient.id;
+        }
+      }
+    } else {
+      let patient = await Patient.findOne({ where: { national_id: patientId } });
+      if (patient) {
+        targetPatientId = patient.id;
+      } else {
+        const user = await User.findOne({ where: { email: patientId } });
+        if (user) {
+          patient = await Patient.findOne({ where: { user_id: user.id } });
+          if (patient) {
+            targetPatientId = patient.id;
+          }
+        }
+      }
+    }
+
+    if (!targetPatientId) {
+      res.status(404).json({ error: 'Patient not found' });
+      return;
+    }
+
     const encrypted = encrypt(JSON.stringify(content));
 
     const record: any = await EHRRecord.create({
-      patient_id: patientId,
+      patient_id: targetPatientId,
       record_type,
       encrypted_content: encrypted.encrypted,
       iv: encrypted.iv,

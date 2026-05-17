@@ -12,7 +12,15 @@ const EHR = () => {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [newRecord, setNewRecord] = useState({ record_type: 'consultation', contentText: '' });
+  const [newPrescription, setNewPrescription] = useState({
+    drug_name: '',
+    dosage: '',
+    frequency: '',
+    duration: '',
+    route: 'Oral'
+  });
 
   const handleSearch = async (e) => {
     e?.preventDefault();
@@ -45,6 +53,26 @@ const EHR = () => {
       handleSearch(); // Refresh records
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to create record');
+    }
+  };
+  const handleAddPrescription = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/prescriptions', {
+        patient_id: patientId,
+        ...newPrescription
+      });
+      toast.success('Prescription issued successfully!');
+      setShowPrescriptionModal(false);
+      setNewPrescription({
+        drug_name: '',
+        dosage: '',
+        frequency: '',
+        duration: '',
+        route: 'Oral'
+      });
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to issue prescription');
     }
   };
 
@@ -98,9 +126,14 @@ const EHR = () => {
                 <User size={20} className="text-slate-400"/> Patient: <span className="text-primary">{patientId}</span>
               </h2>
               {user?.role === 'doctor' && (
-                <button onClick={() => setShowAddModal(true)} className="btn-secondary flex items-center gap-2">
-                  <Plus size={18} /> Add Record
-                </button>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowAddModal(true)} className="btn-secondary flex items-center gap-2">
+                    <Plus size={18} /> Add Record
+                  </button>
+                  <button onClick={() => setShowPrescriptionModal(true)} className="btn-primary flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
+                    <Plus size={18} /> Write Prescription
+                  </button>
+                </div>
               )}
             </div>
 
@@ -184,6 +217,96 @@ const EHR = () => {
                 <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
                   <button type="button" onClick={() => setShowAddModal(false)} className="px-5 py-2 font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
                   <button type="submit" className="btn-primary flex items-center gap-2"><Lock size={16}/> Save Securely</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Write Prescription Modal */}
+      <AnimatePresence>
+        {showPrescriptionModal && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Plus size={20} className="text-primary"/> New Prescription</h2>
+                <div className="flex items-center gap-1.5 text-xs text-blue-600 font-medium">
+                  Tele-Pharmacy Queue
+                </div>
+              </div>
+              
+              <form onSubmit={handleAddPrescription} className="p-6 space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-text">Drug Name</label>
+                    <input 
+                      type="text"
+                      className="input-field" 
+                      required 
+                      value={newPrescription.drug_name} 
+                      onChange={e => setNewPrescription({...newPrescription, drug_name: e.target.value})}
+                      placeholder="e.g. Paracetamol, Amoxicillin"
+                    />
+                  </div>
+                  <div>
+                    <label className="label-text">Dosage</label>
+                    <input 
+                      type="text"
+                      className="input-field" 
+                      required 
+                      value={newPrescription.dosage} 
+                      onChange={e => setNewPrescription({...newPrescription, dosage: e.target.value})}
+                      placeholder="e.g. 500mg, 1 tablet"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="label-text">Frequency</label>
+                    <input 
+                      type="text"
+                      className="input-field" 
+                      required 
+                      value={newPrescription.frequency} 
+                      onChange={e => setNewPrescription({...newPrescription, frequency: e.target.value})}
+                      placeholder="e.g. Twice daily, Once every 8h"
+                    />
+                  </div>
+                  <div>
+                    <label className="label-text">Duration</label>
+                    <input 
+                      type="text"
+                      className="input-field" 
+                      required 
+                      value={newPrescription.duration} 
+                      onChange={e => setNewPrescription({...newPrescription, duration: e.target.value})}
+                      placeholder="e.g. 7 days, 1 month"
+                    />
+                  </div>
+                  <div>
+                    <label className="label-text">Route</label>
+                    <select 
+                      className="input-field" 
+                      value={newPrescription.route} 
+                      onChange={e => setNewPrescription({...newPrescription, route: e.target.value})}
+                    >
+                      <option value="Oral">Oral</option>
+                      <option value="Intravenous">Intravenous (IV)</option>
+                      <option value="Intramuscular">Intramuscular (IM)</option>
+                      <option value="Subcutaneous">Subcutaneous</option>
+                      <option value="Topical">Topical</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
+                  <button type="button" onClick={() => setShowPrescriptionModal(false)} className="px-5 py-2 font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
+                  <button type="submit" className="btn-primary flex items-center gap-2">Issue Prescription</button>
                 </div>
               </form>
             </motion.div>

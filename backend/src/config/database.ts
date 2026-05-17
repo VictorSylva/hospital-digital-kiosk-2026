@@ -4,7 +4,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const isProduction = process.env.NODE_ENV === 'production';
-const databaseUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+const isTest = process.env.NODE_ENV === 'test';
+const databaseUrl = isTest ? null : (process.env.POSTGRES_URL || process.env.DATABASE_URL);
 
 const sequelize = databaseUrl 
   ? new Sequelize(databaseUrl, {

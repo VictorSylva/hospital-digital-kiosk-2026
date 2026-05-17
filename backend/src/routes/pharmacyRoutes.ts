@@ -6,17 +6,20 @@ import {
   rejectPrescription,
   dispensePrescription,
   getInventory,
-  updateInventory
+  updateInventory,
+  addInventoryItem
 } from '../controllers/pharmacyController.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.post('/', issuePrescription);
-router.get('/queue', getPendingPrescriptions);
-router.put('/:id/approve', approvePrescription);
-router.put('/:id/reject', rejectPrescription);
-router.put('/:id/dispense', dispensePrescription);
-router.get('/inventory', getInventory);
-router.put('/inventory/:id', updateInventory);
+router.post('/', authenticate, authorize('doctor', 'admin'), issuePrescription);
+router.get('/queue', authenticate, authorize('pharmacist', 'doctor', 'admin'), getPendingPrescriptions);
+router.put('/:id/approve', authenticate, authorize('pharmacist', 'admin'), approvePrescription);
+router.put('/:id/reject', authenticate, authorize('pharmacist', 'admin'), rejectPrescription);
+router.put('/:id/dispense', authenticate, authorize('pharmacist', 'admin'), dispensePrescription);
+router.get('/inventory', authenticate, authorize('pharmacist', 'doctor', 'admin'), getInventory);
+router.post('/inventory', authenticate, authorize('pharmacist', 'admin'), addInventoryItem);
+router.put('/inventory/:id', authenticate, authorize('pharmacist', 'admin'), updateInventory);
 
 export default router;

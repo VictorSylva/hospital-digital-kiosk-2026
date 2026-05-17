@@ -106,6 +106,10 @@ export const bookAppointment = async (
           { model: User, where: { email: patientIdentifier.toLowerCase() } },
         ],
       });
+    } else {
+      patient = await Patient.findOne({
+        where: { national_id: patientIdentifier },
+      });
     }
 
     if (!patient) {
@@ -284,13 +288,14 @@ export const updateQueueStatus = async (
 ): Promise<void> => {
   try {
     const { queue_id, status } = req.body;
+    const resolvedQueueId = req.params.id || queue_id;
 
-    if (!queue_id || !status) {
+    if (!resolvedQueueId || !status) {
       res.status(400).json({ error: "Queue ID and status required" });
       return;
     }
 
-    const queueEntry: any = await QueueEntry.findByPk(queue_id);
+    const queueEntry: any = await QueueEntry.findByPk(resolvedQueueId);
     if (!queueEntry) {
       res.status(404).json({ error: "Queue entry not found" });
       return;
@@ -309,7 +314,7 @@ export const updateQueueStatus = async (
         req.user.id || req.user.userId,
         "queue_status_updated",
         "queue_entries",
-        queue_id,
+        resolvedQueueId,
         req.clientIp || "",
       );
     }
